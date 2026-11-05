@@ -7,7 +7,7 @@ on:
     inputs:
       profile:
         type: choice
-        options: [all, api, local, safe]
+        options: [all, api, local, safe, precise]
         default: all
       optimization:
         type: choice
@@ -49,7 +49,7 @@ jobs:
       matrix:
         profile: ${{ fromJSON(inputs.profile && inputs.profile != 'all' && format('["{0}"]', inputs.profile) || '["api","local"]') }}
     runs-on: macos-15
-    timeout-minutes: 35
+    timeout-minutes: ${{ matrix.profile == 'precise' && 20 || 35 }}
     steps:
       - uses: actions/checkout@v4
       - uses: graalvm/setup-graalvm@v1
