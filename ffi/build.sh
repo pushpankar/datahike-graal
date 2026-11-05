@@ -11,4 +11,4 @@ javac --add-modules org.graalvm.nativeimage -cp "$sample_cp" -d target/classes b
 native-image -J-Xmx2g --shared -O2 --features=SampleFeature \
   --initialize-at-build-time=clojure,experiment,SampleLibrary \
   '-H:ExcludeResources=.*\.clj[c]?$' \
-  -cp "$sample_cp" -o target/libsample SampleLibrary
+  -cp "$sample_cp" -o target/libsample
