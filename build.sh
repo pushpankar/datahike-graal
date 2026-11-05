@@ -9,17 +9,23 @@ extra_flag=
 case "$profile" in
   api) entry=experiment.main ;;
   local) entry=experiment.local ;;
+  core) entry=experiment.local ;;
   relational) entry=experiment.local; export DATAHIKE_QUERY_PLANNER=false ;;
   safe) entry=experiment.safe ;;
   precise) entry=experiment.safe; extra_flag=-H:-RemoveSaturatedTypeFlows ;;
-  *) echo 'Usage: build.sh [api|local|relational|safe|precise]' >&2; exit 1 ;;
+  *) echo 'Usage: build.sh [api|local|core|relational|safe|precise]' >&2; exit 1 ;;
 esac
 optimization="${DATAHIKE_OPTIMIZATION:-2}"
 case "$optimization" in 2|s) ;; *) echo 'Optimization must be 2 or s' >&2; exit 1 ;; esac
 rm -rf target/classes
 mkdir -p target/classes
-clojure -Srepro -M -e "(binding [*compile-path* \"target/classes\" *compiler-options* {:direct-linking true :elide-meta [:doc :file :line :added]}] (compile '$entry))"
 experiment_cp="$(clojure -Srepro -Spath)"
+if [[ "$profile" == core ]]; then
+  java -Dclojure.compile.path=target/classes -Dclojure.compiler.direct-linking=true \
+    '-Dclojure.compiler.elide-meta=[:doc :file :line :added]' -Dclojure.spec.skip-macros=true \
+    -cp "$experiment_cp" clojure.lang.Compile clojure.core
+fi
+clojure -Srepro -M -e "(binding [*compile-path* \"target/classes\" *compiler-options* {:direct-linking true :elide-meta [:doc :file :line :added]}] (compile '$entry)) (shutdown-agents)"
 native-image -J-Xmx5g -J-XX:-UseParallelGC -J-XX:+UseG1GC \
   -J-Xlog:gc:file=target/build-gc.log "-O$optimization" \
   --initialize-at-build-time -H:+AllowDeprecatedInitializeAllClassesAtBuildTime \
