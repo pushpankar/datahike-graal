@@ -6,7 +6,7 @@ Datahike 0.8.1913; Community GraalVM 25.5.5.0.3, Apple Silicon.
 It follows the upstream native build: AOT with direct linking and build-time
 initialization. No private API, lifecycle adapter, S3 backend, or pod support.
 The shared toolchain and Maven cache live in the parent experiment directory.
-`-Ob` trades optimization for a faster initial build; no PGO.
+`-O2` enables compiler optimizations; no PGO.
 
 ```sh
 python3 scripts/create-test-db.py
