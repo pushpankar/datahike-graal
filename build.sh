@@ -7,7 +7,8 @@ export PATH="$JAVA_HOME/bin:$PATH"
 case "${1:-api}" in
   api) entry=experiment.main ;;
   local) entry=experiment.local ;;
-  *) echo 'Usage: build.sh [api|local]' >&2; exit 1 ;;
+  safe) entry=experiment.safe ;;
+  *) echo 'Usage: build.sh [api|local|safe]' >&2; exit 1 ;;
 esac
 optimization="${DATAHIKE_OPTIMIZATION:-2}"
 case "$optimization" in 2|s) ;; *) echo 'Optimization must be 2 or s' >&2; exit 1 ;; esac

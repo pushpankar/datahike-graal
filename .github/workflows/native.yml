@@ -7,7 +7,7 @@ on:
     inputs:
       profile:
         type: choice
-        options: [all, api, local]
+        options: [all, api, local, safe]
         default: all
       optimization:
         type: choice
@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: ${{ fromJSON(inputs.profile == 'local' && '["local"]' || inputs.profile == 'api' && '["api"]' || '["api","local"]') }}
+        profile: ${{ fromJSON(inputs.profile && inputs.profile != 'all' && format('["{0}"]', inputs.profile) || '["api","local"]') }}
     runs-on: macos-15
     timeout-minutes: 35
     steps:
@@ -93,7 +93,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: ${{ fromJSON(inputs.profile == 'local' && '["local"]' || inputs.profile == 'api' && '["api"]' || '["api","local"]') }}
+        profile: ${{ fromJSON(inputs.profile && inputs.profile != 'all' && format('["{0}"]', inputs.profile) || '["api","local"]') }}
     runs-on: macos-15
     timeout-minutes: 10
     steps:
