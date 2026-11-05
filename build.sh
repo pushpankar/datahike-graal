@@ -10,7 +10,7 @@ case "$profile" in
   api) entry=experiment.main ;;
   local) entry=experiment.local ;;
   core) entry=experiment.local ;;
-  relational) entry=experiment.local; export DATAHIKE_QUERY_PLANNER=false ;;
+  relational) entry=experiment.relational; export DATAHIKE_QUERY_PLANNER=false; extra_flag=-EDATAHIKE_QUERY_PLANNER=false ;;
   safe) entry=experiment.safe ;;
   precise) entry=experiment.safe; extra_flag=-H:-RemoveSaturatedTypeFlows ;;
   *) echo 'Usage: build.sh [api|local|core|relational|safe|precise]' >&2; exit 1 ;;
@@ -26,7 +26,7 @@ if [[ "$profile" == core ]]; then
     -cp "$experiment_cp" clojure.lang.Compile clojure.core
 fi
 clojure -Srepro -M -e "(binding [*compile-path* \"target/classes\" *compiler-options* {:direct-linking true :elide-meta [:doc :file :line :added]}] (compile '$entry)) (shutdown-agents)"
-native-image -J-Xmx5g -J-XX:-UseParallelGC -J-XX:+UseG1GC \
+native-image -H:+PrintUniverse -J-Xmx5g -J-XX:-UseParallelGC -J-XX:+UseG1GC \
   -J-Xlog:gc:file=target/build-gc.log "-O$optimization" \
   --initialize-at-build-time -H:+AllowDeprecatedInitializeAllClassesAtBuildTime \
   --no-fallback -H:IncludeResources=DATAHIKE_VERSION -H:IncludeResources=DATAHIKE_GIT_SHA \

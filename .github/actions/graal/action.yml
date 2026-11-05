@@ -1,0 +1,14 @@
+name: Community GraalVM
+description: Pinned Community GraalVM 25.5.5.0.3 for macOS ARM64
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        curl -fL --retry 3 --retry-all-errors https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-25.5.5.0.3/graalvm-community-jdk-25i5-25.0.5.0.3_macos-aarch64_bin.tar.gz -o "$RUNNER_TEMP/graalvm.tar.gz"
+        echo "54369d4a5931a5a2101c7c52444a4e7e6647a3a4e041335053cda6fd22295e0c  $RUNNER_TEMP/graalvm.tar.gz" | shasum -a 256 -c -
+        tar -xzf "$RUNNER_TEMP/graalvm.tar.gz" -C "$RUNNER_TEMP"
+        graal_home="$RUNNER_TEMP/graalvm-community-25.5.5.0.3+1.1/Contents/Home"
+        echo "JAVA_HOME=$graal_home" >> "$GITHUB_ENV"
+        echo "GRAALVM_HOME=$graal_home" >> "$GITHUB_ENV"
+        echo "$graal_home/bin" >> "$GITHUB_PATH"

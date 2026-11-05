@@ -16,6 +16,10 @@ on:
       fixture_run:
         description: Reuse fixtures from this run ID (empty creates new fixtures)
         type: string
+      compare_datomic:
+        description: Collect a Datomic type inventory on the same toolchain
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -52,11 +56,7 @@ jobs:
     timeout-minutes: ${{ matrix.profile == 'precise' && 20 || 35 }}
     steps:
       - uses: actions/checkout@v4
-      - uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '25'
-          distribution: graalvm-community
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/graal
       - uses: DeLaGuardo/setup-clojure@13.4
         with:
           cli: 1.12.5.1664
@@ -70,6 +70,7 @@ jobs:
         run: |
           mkdir -p target
           set -o pipefail
+          native-image --version
           bash build.sh '${{ matrix.profile }}' 2>&1 | tee target/build.log
           gzip -k -9 target/datahike-demo
           command -v xz || HOMEBREW_NO_AUTO_UPDATE=1 brew install xz
@@ -85,6 +86,38 @@ jobs:
             target/build.log
             target/build-gc.log
             target/sizes.txt
+            target/reports/universe_analysis*.txt
+          retention-days: 7
+
+  datomic-inventory:
+    if: ${{ inputs.compare_datomic }}
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/graal
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: 1.12.5.1664
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.workspace }}/.cache/m2
+          key: macos-arm64-datomic-maven-${{ hashFiles('datomic/deps.edn') }}
+      - name: Build unchanged Datomic baseline with a type inventory
+        working-directory: datomic
+        run: |
+          mkdir -p target
+          set -o pipefail
+          native-image --version
+          bash build.sh 2>&1 | tee target/build.log
+          target/datomic-demo query target/test-db 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: datomic-inventory
+          path: |
+            datomic/target/build.log
+            datomic/target/reports/universe_analysis*.txt
           retention-days: 7
 
   benchmark:
