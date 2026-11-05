@@ -7,7 +7,7 @@ on:
     inputs:
       profile:
         type: choice
-        options: [all, api, local, safe, precise]
+        options: [all, api, local, relational, safe, precise]
         default: all
       optimization:
         type: choice

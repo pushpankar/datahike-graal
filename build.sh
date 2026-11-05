@@ -9,9 +9,10 @@ extra_flag=
 case "$profile" in
   api) entry=experiment.main ;;
   local) entry=experiment.local ;;
+  relational) entry=experiment.local; export DATAHIKE_QUERY_PLANNER=false ;;
   safe) entry=experiment.safe ;;
   precise) entry=experiment.safe; extra_flag=-H:-RemoveSaturatedTypeFlows ;;
-  *) echo 'Usage: build.sh [api|local|safe|precise]' >&2; exit 1 ;;
+  *) echo 'Usage: build.sh [api|local|relational|safe|precise]' >&2; exit 1 ;;
 esac
 optimization="${DATAHIKE_OPTIMIZATION:-2}"
 case "$optimization" in 2|s) ;; *) echo 'Optimization must be 2 or s' >&2; exit 1 ;; esac
