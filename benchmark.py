@@ -27,7 +27,7 @@ for count in counts:
         start = time.perf_counter_ns()
         result = subprocess.run(args, env=env, check=True, capture_output=True, text=True)
         elapsed = (time.perf_counter_ns() - start) / 1_000_000
-        assert json.loads(result.stdout) == f"Note {identifier}", result.stdout
+        assert json.loads(result.stdout.strip().splitlines()[-1]) == f"Note {identifier}", result.stdout
         times.append(elapsed)
     report[str(count)] = {"first_ms": times[0], "median_ms": statistics.median(times[1:]),
                           "p95_ms": sorted(times[1:])[18], "runs_ms": times[1:]}

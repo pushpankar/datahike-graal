@@ -9,7 +9,31 @@ permissions:
   contents: read
 
 jobs:
+  fixtures:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create persistent fixtures in separate native processes
+        run: |
+          mkdir -p target/upstream
+          curl -fL --retry 2 https://github.com/replikativ/datahike/releases/download/0.8.1913/datahike-0.8.1913-macos-aarch64.zip -o target/upstream/datahike.zip
+          unzip -o target/upstream/datahike.zip -d target/upstream
+          chmod +x target/upstream/dthk
+          python3 scripts/create-test-db.py 3 2 10000 100000 1000000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: persistent-fixtures
+          path: |
+            target/db-*
+            target/config-*.edn
+          retention-days: 3
+
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [api, local]
     runs-on: macos-15
     timeout-minutes: 35
     steps:
@@ -24,34 +48,56 @@ jobs:
           cli: 1.12.5.1664
       - uses: actions/cache@v4
         with:
-          path: ../.cache/m2
+          path: ${{ runner.workspace }}/.cache/m2
           key: macos-arm64-maven-${{ hashFiles('deps.edn') }}
       - name: Compile
         run: |
           mkdir -p target
           set -o pipefail
-          bash build.sh 2>&1 | tee target/build.log
-      - name: Prepare fixture and test runtime parameters
-        run: |
-          mkdir -p target/upstream
-          curl -fL --retry 2 https://github.com/replikativ/datahike/releases/download/0.8.1913/datahike-0.8.1913-macos-aarch64.zip -o target/upstream/datahike.zip
-          unzip -o target/upstream/datahike.zip -d target/upstream
-          chmod +x target/upstream/dthk
-          python3 scripts/create-test-db.py 2
-          test "$(target/datahike-demo target/config-2.edn 1)" = '"Note 1"'
-          test "$(target/datahike-demo target/config-2.edn 2)" = '"Note 2"'
-          python3 benchmark.py target/datahike-demo 2
+          bash build.sh '${{ matrix.profile }}' 2>&1 | tee target/build.log
           gzip -k -9 target/datahike-demo
           wc -c target/datahike-demo target/datahike-demo.gz | tee target/sizes.txt
-      - name: Upload executable and logs
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: datahike-macos-arm64
+          name: native-${{ matrix.profile }}
           path: |
             target/datahike-demo.gz
             target/build.log
             target/build-gc.log
             target/sizes.txt
+          retention-days: 7
+
+  benchmark:
+    needs: [fixtures, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [api, local]
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-${{ matrix.profile }}
+          path: target
+      - uses: actions/download-artifact@v4
+        with:
+          name: persistent-fixtures
+          path: target
+      - name: Measure startup and verify database operations
+        run: |
+          gzip -dk target/datahike-demo.gz
+          chmod +x target/datahike-demo
+          python3 benchmark.py target/datahike-demo | tee target/benchmark.log
+          target/datahike-demo target/config-3.edn check
+          test "$(target/datahike-demo target/config-3.edn 2 | tail -n 1)" = '"Updated note"'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: measurements-${{ matrix.profile }}
+          path: |
             target/benchmark-datahike-demo.json
-          retention-days: 14
+            target/benchmark.log
+          retention-days: 7
