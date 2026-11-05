@@ -4,12 +4,26 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      profile:
+        type: choice
+        options: [all, api, local]
+        default: all
+      optimization:
+        type: choice
+        options: ['2', s]
+        default: '2'
+      fixture_run:
+        description: Reuse fixtures from this run ID (empty creates new fixtures)
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   fixtures:
+    if: ${{ !inputs.fixture_run }}
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -33,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [api, local]
+        profile: ${{ fromJSON(inputs.profile == 'local' && '["local"]' || inputs.profile == 'api' && '["api"]' || '["api","local"]') }}
     runs-on: macos-15
     timeout-minutes: 35
     steps:
@@ -51,18 +65,23 @@ jobs:
           path: ${{ runner.workspace }}/.cache/m2
           key: macos-arm64-maven-${{ hashFiles('deps.edn') }}
       - name: Compile
+        env:
+          DATAHIKE_OPTIMIZATION: ${{ inputs.optimization || '2' }}
         run: |
           mkdir -p target
           set -o pipefail
           bash build.sh '${{ matrix.profile }}' 2>&1 | tee target/build.log
           gzip -k -9 target/datahike-demo
-          wc -c target/datahike-demo target/datahike-demo.gz | tee target/sizes.txt
+          command -v xz || HOMEBREW_NO_AUTO_UPDATE=1 brew install xz
+          xz -9e -k target/datahike-demo
+          wc -c target/datahike-demo target/datahike-demo.gz target/datahike-demo.xz | tee target/sizes.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: native-${{ matrix.profile }}
           path: |
             target/datahike-demo.gz
+            target/datahike-demo.xz
             target/build.log
             target/build-gc.log
             target/sizes.txt
@@ -70,10 +89,11 @@ jobs:
 
   benchmark:
     needs: [fixtures, build]
+    if: ${{ always() && (needs.fixtures.result == 'success' || needs.fixtures.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
-        profile: [api, local]
+        profile: ${{ fromJSON(inputs.profile == 'local' && '["local"]' || inputs.profile == 'api' && '["api"]' || '["api","local"]') }}
     runs-on: macos-15
     timeout-minutes: 10
     steps:
@@ -86,6 +106,8 @@ jobs:
         with:
           name: persistent-fixtures
           path: target
+          run-id: ${{ inputs.fixture_run || github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Measure startup and verify database operations
         run: |
           gzip -dk target/datahike-demo.gz
