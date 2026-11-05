@@ -5,12 +5,12 @@ export JAVA_HOME="${JAVA_HOME:-$PWD/../.tools/graalvm}"
 export JAVA_CMD="$JAVA_HOME/bin/java"
 export PATH="$JAVA_HOME/bin:$PATH"
 profile="${1:-api}"
-extra_flags=()
+extra_flag=
 case "$profile" in
   api) entry=experiment.main ;;
   local) entry=experiment.local ;;
   safe) entry=experiment.safe ;;
-  precise) entry=experiment.safe; extra_flags+=(-H:-RemoveSaturatedTypeFlows) ;;
+  precise) entry=experiment.safe; extra_flag=-H:-RemoveSaturatedTypeFlows ;;
   *) echo 'Usage: build.sh [api|local|safe|precise]' >&2; exit 1 ;;
 esac
 optimization="${DATAHIKE_OPTIMIZATION:-2}"
@@ -23,5 +23,5 @@ native-image -J-Xmx5g -J-XX:-UseParallelGC -J-XX:+UseG1GC \
   -J-Xlog:gc:file=target/build-gc.log "-O$optimization" \
   --initialize-at-build-time -H:+AllowDeprecatedInitializeAllClassesAtBuildTime \
   --no-fallback -H:IncludeResources=DATAHIKE_VERSION -H:IncludeResources=DATAHIKE_GIT_SHA \
-  "${extra_flags[@]}" \
+  ${extra_flag:+"$extra_flag"} \
   -cp "$experiment_cp" "$entry" target/datahike-demo
