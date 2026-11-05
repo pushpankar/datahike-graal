@@ -8,7 +8,7 @@ mkdir -p target/classes
 clojure -Srepro -M -e '(binding [*compile-path* "target/classes" *compiler-options* {:direct-linking true}] (compile (quote experiment.main)))'
 experiment_cp="$(clojure -Srepro -Spath)"
 native-image -J-Xmx5g -J-XX:-UseParallelGC -J-XX:+UseG1GC \
-  -J-Xlog:gc:file=target/build-gc.log --parallelism=2 -Ob \
+  -J-Xlog:gc:file=target/build-gc.log -Ob \
   --initialize-at-build-time -H:+AllowDeprecatedInitializeAllClassesAtBuildTime \
   --no-fallback -H:IncludeResources=DATAHIKE_VERSION -H:IncludeResources=DATAHIKE_GIT_SHA \
   -cp "$experiment_cp" experiment.main target/datahike-demo
