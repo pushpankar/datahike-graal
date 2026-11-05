@@ -1,0 +1,57 @@
+name: Native Datahike
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: 1.12.5.1664
+      - uses: actions/cache@v4
+        with:
+          path: ../.cache/m2
+          key: macos-arm64-maven-${{ hashFiles('deps.edn') }}
+      - name: Compile
+        run: |
+          mkdir -p target
+          set -o pipefail
+          bash build.sh 2>&1 | tee target/build.log
+      - name: Prepare fixture and test runtime parameters
+        run: |
+          mkdir -p target/upstream
+          curl -fL --retry 2 https://github.com/replikativ/datahike/releases/download/0.8.1913/datahike-0.8.1913-macos-aarch64.zip -o target/upstream/datahike.zip
+          unzip -o target/upstream/datahike.zip -d target/upstream
+          chmod +x target/upstream/dthk
+          python3 scripts/create-test-db.py 2
+          test "$(target/datahike-demo target/config-2.edn 1)" = '"Note 1"'
+          test "$(target/datahike-demo target/config-2.edn 2)" = '"Note 2"'
+          python3 benchmark.py target/datahike-demo 2
+          gzip -k -9 target/datahike-demo
+          wc -c target/datahike-demo target/datahike-demo.gz | tee target/sizes.txt
+      - name: Upload executable and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: datahike-macos-arm64
+          path: |
+            target/datahike-demo.gz
+            target/build.log
+            target/build-gc.log
+            target/sizes.txt
+            target/benchmark-datahike-demo.json
+          retention-days: 14

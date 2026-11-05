@@ -1,0 +1,4 @@
+{:paths ["src" "target/classes"]
+ :mvn/local-repo "../.cache/m2"
+ :mvn/repos {"central" {:url "https://repo.maven.apache.org/maven2/"}}
+ :deps {org.replikativ/datahike {:mvn/version "0.8.1913"}}}
