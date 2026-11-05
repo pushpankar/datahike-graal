@@ -1,0 +1,21 @@
+name: Chez Graal FFI sample
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/graal
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: 1.12.5.1664
+      - run: bash ffi/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chez-ffi-macos-arm64
+          path: |
+            ffi/target/libsample*
+            ffi/target/graal_isolate*.h

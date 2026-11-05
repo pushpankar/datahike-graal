@@ -1,0 +1,3 @@
+{:paths ["src" "target/classes"]
+ :mvn/local-repo "../.cache/m2"
+ :deps {org.clojure/clojure {:mvn/version "1.12.3"}}}
